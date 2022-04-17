@@ -59,8 +59,8 @@ data:
     http-server.https.enabled=true
     http-server.https.port={{ .Values.server.config.https.port }}
     http-server.https.keystore.path={{ .Values.server.config.https.keystore.path }}
-  {{- end }}
-  {{ .Values.server.coordinatorExtraConfig | indent 4 }}
+  {{- end -}}
+  {{ .Values.server.coordinatorExtraConfig | nindent 4 }}
 
 {{- if .Values.accessControl }}{{- if eq .Values.accessControl.type "configmap" }}
   access-control.properties: |
@@ -86,8 +86,16 @@ data:
 
   {{- if eq .Values.server.config.authenticationType "PASSWORD" }}
   password-authenticator.properties: |
-    password-authenticator.name=file
+    password-authenticator.name={{ .Values.server.config.passwordAuthTypeName -}}
+    {{ if eq .Values.server.config.passwordAuthTypeName "file" }}
     file.password-file={{ .Values.server.config.path }}/auth/password.db
+    {{ end -}}
+    {{ if eq .Values.server.config.passwordAuthTypeName "ldap" -}}
+      {{ .Values.auth.ldap | nindent 4 }}
+    {{ end }}
+    {{ if eq .Values.server.config.passwordAuthTypeName "salesforce" -}}
+      {{ .Values.auth.salesforce | nindent 4 }}
+    {{ end }}
   {{- end }}
 
 {{ if .Values.eventListenerProperties }}

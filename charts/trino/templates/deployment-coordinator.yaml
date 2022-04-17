@@ -26,6 +26,7 @@ spec:
       securityContext:
         runAsUser: {{ .runAsUser }}
         runAsGroup: {{ .runAsGroup }}
+        fsGroup: {{ .runAsGroup }}
       {{- end }}
       volumes:
         - name: config-volume
@@ -39,20 +40,31 @@ spec:
           configMap:
             name: trino-access-control-volume-coordinator
         {{- end }}{{- end }}
-        {{- if eq .Values.server.config.authenticationType "PASSWORD" }}
+        {{- if eq .Values.server.config.authenticationType "PASSWORD" }}{{- if eq .Values.server.config.passwordAuthTypeName "file" }}
         - name: password-volume
           secret:
             secretName: trino-password-authentication
-        {{- end }}
-      {{- if .Values.initContainers.coordinator }}
-      initContainers:
-      {{-  tpl (toYaml .Values.initContainers.coordinator) . | nindent 6 }}
-      {{- end }}
+        {{- end }}{{ end }}
         {{- range .Values.secretMounts }}
         - name: {{ .name }}
           secret:
             secretName: {{ .secretName }}
-        {{- end }}
+            {{ if .defaultMode -}}
+            defaultMode: {{ .defaultMode }}
+            {{ end -}}
+            {{- if .items }}
+            items:
+              {{- toYaml .items | nindent 12 }}
+            {{- end -}}
+        {{- end -}}
+        {{- range .Values.emptyMounts }}
+        - name: {{ .name }}
+          emptyDir: {}
+        {{- end -}}        
+      {{- if .Values.initContainers.coordinator }}
+      initContainers:
+      {{-  tpl (toYaml .Values.initContainers.coordinator) . | nindent 6 }}
+      {{- end }}
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       containers:
@@ -71,13 +83,23 @@ spec:
               name: access-control-volume
             {{- end }}{{- end }}
             {{- range .Values.secretMounts }}
+            {{- if .items -}}{{ $n := .name }}{{ $p := .path }}{{- range .items }}            
+            - name: {{ $n }}
+              mountPath: {{ $p -}} / {{- .path }}
+              subPath: {{ .path -}}
+            {{ end }}{{ else }}
             - name: {{ .name }}
-              mountPath: {{ .path }}
+              mountPath: {{ .path -}}
+            {{ end }}
             {{- end }}
-            {{- if eq .Values.server.config.authenticationType "PASSWORD" }}
+            {{- if eq .Values.server.config.authenticationType "PASSWORD" }}{{- if eq .Values.server.config.passwordAuthTypeName "file" }}
             - mountPath: {{ .Values.server.config.path }}/auth
               name: password-volume
-            {{- end }}   
+            {{- end }}{{ end }}
+            {{- range .Values.emptyMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .path -}}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
