@@ -31,6 +31,22 @@ spec:
         - name: catalog-volume
           configMap:
             name: {{ template "trino.catalog" . }}
+        {{- range .Values.secretMounts }}
+        - name: {{ .name }}
+          secret:
+            secretName: {{ .secretName }}
+            {{ if .defaultMode -}}
+            defaultMode: {{ .defaultMode }}
+            {{ end -}}
+            {{- if .items }}
+            items:
+              {{- toYaml .items | nindent 12 }}
+            {{- end -}}
+        {{- end -}}
+        {{- range .Values.emptyMounts }}
+        - name: {{ .name }}
+          emptyDir: {}
+        {{- end -}}        
       {{- if .Values.initContainers.worker }}
       initContainers:
       {{-  tpl (toYaml .Values.initContainers.worker) . | nindent 6 }}
