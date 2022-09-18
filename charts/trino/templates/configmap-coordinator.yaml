@@ -9,6 +9,7 @@ metadata:
     heritage: {{ .Release.Service }}
     component: coordinator
 data:
+
   node.properties: |
     node.environment={{ .Values.server.node.environment }}
     node.data-dir={{ .Values.server.node.dataDir }}
@@ -103,6 +104,14 @@ data:
   {{- range $configValue := .Values.eventListenerProperties }}
     {{ $configValue }}
   {{- end }}
+{{ end }}
+
+{{ if .Values.resourceGroups }}
+  resource-groups.properties: |
+      resource-groups.configuration-manager=file
+      resource-groups.config-file=etc/resource-groups.json
+  resource-groups.json: |
+    {{ .Values.resourceGroups | nindent 4 }}
 {{ end }}
 
 ---
